@@ -26,7 +26,7 @@ jobs:
             fakeroot devscripts dpkg-dev \
             kmod ccache \
             libudev-dev libpci-dev \
-            libiberty-dev libiberty-perl \
+            libiberty-dev \
             python3-distutils python3-dev python3-pip \
             liblz4-tool xz-utils liblzma-dev libzstd-dev \
             wget curl git quilt
