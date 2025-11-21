@@ -1,0 +1,71 @@
+name: Build Debian 5.10 RT Kernel with fsync
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-kernel:
+    runs-on: ubuntu-22.04
+    env:
+      DEBIAN_FRONTEND: noninteractive
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            gcc-10 cpp-10 libgcc-10-dev \
+            bc flex bison \
+            libncurses-dev libncurses5-dev \
+            libssl-dev libelf-dev \
+            cpio dwarves \
+            fakeroot devscripts dpkg-dev \
+            kmod ccache \
+            libudev-dev libpci-dev \
+            libiberty-dev libiberty-perl \
+            python3-distutils python3-dev python3-pip \
+            liblz4-tool xz-utils liblzma-dev libzstd-dev \
+            wget curl git quilt
+
+      - name: Create build directory
+        run: mkdir -p ${{ github.workspace }}/kernel-build && cd ${{ github.workspace }}/kernel-build
+
+      - name: Download Debian 5.10.244 sources
+        run: |
+          cd ${{ github.workspace }}/kernel-build
+          wget https://snapshot.debian.org/archive/debian-security/20251012T093411Z/pool/updates/main/l/linux/linux_5.10.244.orig.tar.xz
+          wget https://snapshot.debian.org/archive/debian-security/20251012T093411Z/pool/updates/main/l/linux/linux_5.10.244-1.debian.tar.xz
+          wget https://snapshot.debian.org/archive/debian-security/20251012T093411Z/pool/updates/main/l/linux/linux_5.10.244-1.dsc
+          dpkg-source -x linux_5.10.244-1.dsc
+
+      - name: Download fsync patches
+        run: |
+          cd ${{ github.workspace }}/kernel-build/linux-5.10.244
+          mkdir -p debian/patches/fsync
+          wget -O debian/patches/fsync/0007-v5.10-fsync_legacy.patch https://raw.githubusercontent.com/Frogging-Family/linux-tkg/refs/heads/master/linux-tkg-patches/5.10/0007-v5.10-fsync_legacy.patch
+          wget -O debian/patches/fsync/0007-v5.10-futex2_interface.patch https://raw.githubusercontent.com/Frogging-Family/linux-tkg/refs/heads/master/linux-tkg-patches/5.10/0007-v5.10-futex2_interface.patch
+          wget -O debian/patches/fsync/0007-v5.10-winesync.patch https://raw.githubusercontent.com/Frogging-Family/linux-tkg/refs/heads/master/linux-tkg-patches/5.10/0007-v5.10-winesync.patch
+
+      - name: Apply fsync patches
+        run: |
+          cd ${{ github.workspace }}/kernel-build/linux-5.10.244
+          for patch in debian/patches/fsync/*.patch; do
+            quilt import "$patch"
+          done
+          quilt push -a
+
+      - name: Build Debian kernel
+        run: |
+          cd ${{ github.workspace }}/kernel-build/linux-5.10.244
+          export DEB_BUILD_OPTIONS=parallel=$(nproc)
+          dpkg-buildpackage -us -uc -ui -j$(nproc)
+
+      - name: Upload .deb artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: kernel-debs
+          path: ${{ github.workspace }}/kernel-build/*.deb
