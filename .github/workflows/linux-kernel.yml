@@ -5,7 +5,7 @@ on:
 
 jobs:
   build-kernel:
-    runs-on: ubuntu-22.04
+    runs-on: debian-12
     env:
       DEBIAN_FRONTEND: noninteractive
 
@@ -29,10 +29,16 @@ jobs:
             libiberty-dev \
             python3-distutils python3-dev python3-pip \
             liblz4-tool xz-utils liblzma-dev libzstd-dev \
-            wget curl git quilt
+            wget curl git quilt \
+            debhelper-compat dh-exec dh-python kernel-wedge \
+            python3-docutils libcap-dev libwrap0-dev asciidoctor \
+            gcc-multilib libaudit-dev libbabeltrace-dev libdw-dev \
+            libnewt-dev libnuma-dev libperl-dev libunwind-dev \
+            libopencsd-dev graphviz python3-sphinx python3-sphinx-rtd-theme \
+            texlive-latex-base texlive-latex-extra dvipng
 
       - name: Create build directory
-        run: mkdir -p ${{ github.workspace }}/kernel-build && cd ${{ github.workspace }}/kernel-build
+        run: mkdir -p ${{ github.workspace }}/kernel-build
 
       - name: Download Debian 5.10.244 sources
         run: |
