@@ -65,7 +65,7 @@ jobs:
           dpkg-buildpackage -us -uc -ui -j$(nproc)
 
       - name: Upload .deb artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: kernel-debs
           path: ${{ github.workspace }}/kernel-build/*.deb
