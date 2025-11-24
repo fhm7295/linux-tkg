@@ -8,9 +8,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout Venemo kernel repository
+    - name: Checkout Venemo kernel repository (HTTPS + retry + shallow)
       run: |
-        git clone --branch ven_vce1 https://gitlab.freedesktop.org/Venemo/linux.git venemo-linux
+        for i in {1..5}; do
+          git clone --depth 1 --branch ven_vce1 https://gitlab.freedesktop.org/Venemo/linux.git venemo-linux && break
+          echo "Clone failed, retrying in 10s..."
+          sleep 10
+        done
         cd venemo-linux
         git submodule update --init --recursive
 
