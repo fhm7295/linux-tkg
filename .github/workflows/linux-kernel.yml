@@ -1,77 +1,43 @@
-name: Build Debian 5.10 RT Kernel with fsync
+name: Build Venemo VCE1 Kernel
 
 on:
   workflow_dispatch:
 
 jobs:
-  build-kernel:
-    runs-on: debian-12
+  build:
+    runs-on: ubuntu-latest
     env:
-      DEBIAN_FRONTEND: noninteractive
-
+      KERNEL_VERSION: vce1
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
+    - name: Checkout Venemo repo
+      uses: actions/checkout@v3
+      with:
+        repository: venemo/linux
+        ref: ven_vce1
+        submodules: true
 
-      - name: Install build dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            build-essential \
-            gcc-10 cpp-10 libgcc-10-dev \
-            bc flex bison \
-            libncurses-dev libncurses5-dev \
-            libssl-dev libelf-dev \
-            cpio dwarves \
-            fakeroot devscripts dpkg-dev \
-            kmod ccache \
-            libudev-dev libpci-dev \
-            libiberty-dev \
-            python3-distutils python3-dev python3-pip \
-            liblz4-tool xz-utils liblzma-dev libzstd-dev \
-            wget curl git quilt \
-            debhelper-compat dh-exec dh-python kernel-wedge \
-            python3-docutils libcap-dev libwrap0-dev asciidoctor \
-            gcc-multilib libaudit-dev libbabeltrace-dev libdw-dev \
-            libnewt-dev libnuma-dev libperl-dev libunwind-dev \
-            libopencsd-dev graphviz python3-sphinx python3-sphinx-rtd-theme \
-            texlive-latex-base texlive-latex-extra dvipng
+    - name: Install build dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y build-essential libncurses-dev bison flex libssl-dev bc wget git fakeroot
 
-      - name: Create build directory
-        run: mkdir -p ${{ github.workspace }}/kernel-build
+    - name: Prepare kernel
+      run: |
+        make mrproper
+        cp /boot/config-$(uname -r) .config || make defconfig
+        make olddefconfig
+        make prepare
+        make modules_prepare
 
-      - name: Download Debian 5.10.244 sources
-        run: |
-          cd ${{ github.workspace }}/kernel-build
-          wget https://snapshot.debian.org/archive/debian-security/20251012T093411Z/pool/updates/main/l/linux/linux_5.10.244.orig.tar.xz
-          wget https://snapshot.debian.org/archive/debian-security/20251012T093411Z/pool/updates/main/l/linux/linux_5.10.244-1.debian.tar.xz
-          wget https://snapshot.debian.org/archive/debian-security/20251012T093411Z/pool/updates/main/l/linux/linux_5.10.244-1.dsc
-          dpkg-source -x linux_5.10.244-1.dsc
+    - name: Build kernel + modules
+      run: |
+        make -j$(nproc)
+        mkdir -p out
+        make modules_install INSTALL_MOD_PATH=out
+        cp arch/x86/boot/bzImage out/
 
-      - name: Download fsync patches
-        run: |
-          cd ${{ github.workspace }}/kernel-build/linux-5.10.244
-          mkdir -p debian/patches/fsync
-          wget -O debian/patches/fsync/0007-v5.10-fsync_legacy.patch https://raw.githubusercontent.com/Frogging-Family/linux-tkg/refs/heads/master/linux-tkg-patches/5.10/0007-v5.10-fsync_legacy.patch
-          wget -O debian/patches/fsync/0007-v5.10-futex2_interface.patch https://raw.githubusercontent.com/Frogging-Family/linux-tkg/refs/heads/master/linux-tkg-patches/5.10/0007-v5.10-futex2_interface.patch
-          wget -O debian/patches/fsync/0007-v5.10-winesync.patch https://raw.githubusercontent.com/Frogging-Family/linux-tkg/refs/heads/master/linux-tkg-patches/5.10/0007-v5.10-winesync.patch
-
-      - name: Apply fsync patches
-        run: |
-          cd ${{ github.workspace }}/kernel-build/linux-5.10.244
-          for patch in debian/patches/fsync/*.patch; do
-            quilt import "$patch"
-          done
-          quilt push -a
-
-      - name: Build Debian kernel
-        run: |
-          cd ${{ github.workspace }}/kernel-build/linux-5.10.244
-          export DEB_BUILD_OPTIONS=parallel=$(nproc)
-          dpkg-buildpackage -us -uc -ui -j$(nproc)
-
-      - name: Upload .deb artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: kernel-debs
-          path: ${{ github.workspace }}/kernel-build/*.deb
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: venemo-kernel
+        path: out/
