@@ -9,11 +9,10 @@ jobs:
 
     steps:
     - name: Checkout Venemo kernel repository
-      uses: actions/checkout@v3
-      with:
-        repository: venemo/linux
-        ref: ven_vce1
-        submodules: true
+      run: |
+        git clone --branch ven_vce1 https://gitlab.freedesktop.org/Venemo/linux.git venemo-linux
+        cd venemo-linux
+        git submodule update --init --recursive
 
     - name: Install build dependencies
       run: |
@@ -22,6 +21,7 @@ jobs:
 
     - name: Prepare kernel
       run: |
+        cd venemo-linux
         make mrproper
         cp /boot/config-$(uname -r) .config || make defconfig
         make olddefconfig
@@ -30,6 +30,7 @@ jobs:
 
     - name: Build full kernel + modules
       run: |
+        cd venemo-linux
         make -j$(nproc)
         mkdir -p out
         make modules_install INSTALL_MOD_PATH=out
@@ -39,4 +40,4 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: venemo-kernel
-        path: out/
+        path: venemo-linux/out/
