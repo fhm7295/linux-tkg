@@ -21,7 +21,7 @@ jobs:
     - name: Install build dependencies
       run: |
         sudo apt update
-        sudo apt install -y build-essential libncurses-dev bison flex libssl-dev bc wget git fakeroot
+        sudo apt install -y build-essential libncurses-dev bison flex libssl-dev bc wget git fakeroot libelf-dev libssl-dev
 
     - name: Prepare kernel
       run: |
