@@ -6,10 +6,9 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    env:
-      KERNEL_VERSION: vce1
+
     steps:
-    - name: Checkout Venemo repo
+    - name: Checkout Venemo kernel repository
       uses: actions/checkout@v3
       with:
         repository: venemo/linux
@@ -29,15 +28,15 @@ jobs:
         make prepare
         make modules_prepare
 
-    - name: Build kernel + modules
+    - name: Build full kernel + modules
       run: |
         make -j$(nproc)
         mkdir -p out
         make modules_install INSTALL_MOD_PATH=out
         cp arch/x86/boot/bzImage out/
 
-    - name: Upload artifacts
-      uses: actions/upload-artifact@v3
+    - name: Upload kernel + modules artifacts
+      uses: actions/upload-artifact@v4
       with:
         name: venemo-kernel
         path: out/
